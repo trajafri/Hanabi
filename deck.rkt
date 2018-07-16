@@ -84,6 +84,7 @@
                                      (helper (return (cons (car new-card&new-deck) curr-deck)) (sub1 int)))))
   (car ((State-tfunc (helper (return '()) (length deck))) deck)))
 
+
 (check-true (andmap (λ (x y) (card=? x y))
                     (sort (deck-shuffler (deck-generator))
                           (λ (x y) (cond

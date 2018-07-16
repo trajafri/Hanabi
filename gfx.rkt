@@ -24,15 +24,18 @@
 
   ;; Card number properties
   (define N-SIZE 20)
-  (define N-B 1)
+  (define N-B 3)
+  (define N-B-COLOR "white")
   (define N-GAP 0.3) ;; Gap between borders and number's edge 
 
   ;; number: Int Color -> Image
   ;; Creates an image of a number with the given color
   (define (number n c)
     (define num (number->string n))
-    (overlay (text/font num (- N-SIZE N-B) c #f "default" "italic" "normal" #f)
-             (text/font num (- N-SIZE N-B) "white" #f "default" "italic" "bold" #f)))
+    (define num-image (text/font num N-SIZE c #f "default" "italic" "normal" #f))
+    (define num-outline (text/font num N-SIZE N-B-COLOR #f "default" "italic" "normal" #f))
+    (define outline-fill (text/font num (- N-SIZE N-B) c #f "default" "italic" "normal" #f))
+    (overlay outline-fill num-outline num-image))
 
   ;; card: Int Color -> Image
   ;; Creates an image of a card
@@ -48,6 +51,30 @@
                  (place-image num l-x t-y
                               (place-image num l-x b-y
                                            (place-image num r-x b-y card-base)))))
+;; TODO. Make a seperate file for all structures.
+  
+  (struct Card [color value])
+
+  (define fanning-angle -10)
+  
+  ;; fan-combine: Image Image -> Image
+  ;; Combines two images by the set fanning angle
+  (define (fan-combine img1 img2)
+    (define deck (overlay/xy img1 20 -5 (rotate fanning-angle img2)))
+    (rotate 0 #;(* -1 fanning-angle) deck))
+  
+  ;; deck: [ListOf Card] (Image Image -> Image) -> Image
+  ;; Returns an image of a deck
+  (define (deck loc comb-f)
+    (if (empty? loc) empty-image (comb-f (card (Card-value (car loc))
+                                                (Card-color (car loc)))
+                                          (deck (cdr loc) comb-f))))
+
+  #;(overlay (rotate 20 (deck `(,(Card "red" 1)
+                   ,(Card "red" 2)
+                   ,(Card "red" 3)
+                   ,(Card "red" 4)
+                   ,(Card "red" 5)) fan-combine)) (empty-scene 510 170 "black"))
 
   ;; Coin dimensions
   (define CO-R 5)
