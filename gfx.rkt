@@ -1,14 +1,15 @@
 (module gfx racket
-  (require "structs.rkt" racket/draw racket/gui)
-  (provide card fan-combine deck coin)
+  (require "structs.rkt" racket/draw racket/gui (except-in 2htdp/image make-pen make-color))
+  (provide #;card #;#;#;fan-combine deck coin)
   
   ;; Card dimensions
-  (define C-H 160)
+  (define C-H 180)
   (define C-W (* C-H 0.63))
+  (define C-R 10) ;;Radius for roundness
 
   ;; Card borders
-  (define B-COLOR "white")
-  (define B-W 10)
+  (define C-B-COLOR "white")
+  (define C-B-W 5)
 
   ;; Card color
   (define C-COLOR "mediumblue")
@@ -24,45 +25,61 @@
 
   ;; Card number properties
   (define N-SIZE 20)
-  (define N-B 3)
+  (define N-B-W 1.5)
   (define N-B-COLOR "white")
-  (define N-GAP 0.3) ;; Gap between borders and number's edge 
+  (define N-GAP 0.3) ;; Gap between borders and number's edge
 
-  ;; number: Int Color -> Image
+  ;; show-image: bitmap -> Image
+  ;; Creates an image of the given bitmap-dc% object
+  (define (show-image bm)
+    (make-object image-snip% bm))
+
+  ;; number: Int Color -> bitmap-dc%
   ;; Creates an image of a number with the given color
   (define (number n c)
     (define num (number->string n))
-    (define num-image (text/font num N-SIZE c #f "default" "italic" "normal" #f))
-    (define num-outline (text/font num N-SIZE N-B-COLOR #f "default" "italic" "normal" #f))
-    (define outline-fill (text/font num (- N-SIZE N-B) c #f "default" "italic" "normal" #f))
-    (overlay outline-fill num-outline num-image))
+    (define target (make-bitmap N-SIZE (+ N-SIZE (/ N-SIZE 2))))
+    (define dc (new bitmap-dc% [bitmap target]))
+    (send dc set-font (make-font #:size N-SIZE #:style 'italic #:weight 'bold))
+    (send dc set-text-foreground N-B-COLOR)
+    (send dc draw-text num 0 0)
+    (send dc set-font (make-font #:size (- N-SIZE N-B-W) #:style 'italic #:weight 'bold))
+    (send dc set-text-foreground c)
+    (send dc draw-text num (/ N-B-W 2) (/ N-B-W 2))
+    target)
 
   ;; card: Int Color -> Image
   ;; Creates an image of a card
   (define (card n c)
     (define num (number n c))
-    (define card-base (overlay (rectangle (- C-W B-W) (- C-H B-W) "solid" C-COLOR)
-                               (rectangle C-W C-H "solid" B-COLOR)))
-    (define l-x (+ (/ (image-width num) 2) B-W N-GAP))
-    (define r-x (- C-W (+ (/ (image-width num) 2) B-W N-GAP)))
-    (define t-y (+ (/ (image-height num) 3) B-W N-GAP))
-    (define b-y (- C-H (+ (/ (image-height num) 3) B-W N-GAP)))
-    (place-image num r-x t-y
-                 (place-image num l-x t-y
-                              (place-image num l-x b-y
-                                           (place-image num r-x b-y card-base)))))
+    (define num-width (send num get-width))
+    (define num-height (send num get-height))
+    (define target (make-bitmap (exact-round C-W) C-H))
+    (define dc (new bitmap-dc% [bitmap target]))
+    (send dc set-pen C-B-COLOR C-B-W 'solid)
+    (send dc set-brush C-COLOR 'solid)
+    (send dc draw-rounded-rectangle 0 0 C-W C-H C-R)
+    (define l-x (+ C-B-W N-GAP))
+    (define r-x (- C-W (+ num-width C-B-W N-GAP)))
+    (define t-y (+ C-B-W N-GAP))
+    (define b-y (- C-H (+ num-height C-B-W N-GAP)))
+    (send dc draw-bitmap num l-x t-y)
+    (send dc draw-bitmap num l-x b-y)
+    (send dc draw-bitmap num r-x t-y)
+    (send dc draw-bitmap num r-x b-y)
+    target)
   
   (define fanning-angle -10)
   
   ;; fan-combine: Image Image -> Image
   ;; Combines two images by the set fanning angle
-  (define (fan-combine img1 img2)
+  #;(define (fan-combine img1 img2)
     (define deck (overlay/xy img1 20 -5 (rotate fanning-angle img2)))
     (rotate 0 #;(* -1 fanning-angle) deck))
   
   ;; deck: [ListOf Card] (Image Image -> Image) -> Image
   ;; Returns an image of a deck
-  (define (deck loc comb-f)
+  #;(define (deck loc comb-f)
     (if (empty? loc) empty-image (comb-f (card (card-value (car loc))
                                                 (card-color (car loc)))
                                           (deck (cdr loc) comb-f))))
@@ -83,6 +100,6 @@
   (define BOMB-C-BG "tomato")
 
   ;; coin: Color Color -> Image
-  (define (coin fg bg)
+  #;(define (coin fg bg)
     (overlay (circle CO-R "solid" fg)
              (circle (+ CO-R CO-BORDER) "solid" bg))))
