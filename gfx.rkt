@@ -1,6 +1,6 @@
-(module hanabigfx racket
-  (require 2htdp/image 2htdp/universe)
-  (provide card coin)
+(module gfx racket
+  (require "structs.rkt" 2htdp/image 2htdp/universe)
+  (provide card fan-combine deck coin)
   
   ;; Card dimensions
   (define C-H 160)
@@ -51,10 +51,7 @@
                  (place-image num l-x t-y
                               (place-image num l-x b-y
                                            (place-image num r-x b-y card-base)))))
-;; TODO. Make a seperate file for all structures.
   
-  (struct Card [color value])
-
   (define fanning-angle -10)
   
   ;; fan-combine: Image Image -> Image
@@ -66,8 +63,8 @@
   ;; deck: [ListOf Card] (Image Image -> Image) -> Image
   ;; Returns an image of a deck
   (define (deck loc comb-f)
-    (if (empty? loc) empty-image (comb-f (card (Card-value (car loc))
-                                                (Card-color (car loc)))
+    (if (empty? loc) empty-image (comb-f (card (card-value (car loc))
+                                                (card-color (car loc)))
                                           (deck (cdr loc) comb-f))))
 
   #;(overlay (rotate 20 (deck `(,(Card "red" 1)
