@@ -1,5 +1,5 @@
 (module gfx racket
-  (require "structs.rkt" 2htdp/image 2htdp/universe)
+  (require "structs.rkt" racket/draw racket/gui)
   (provide card fan-combine deck coin)
   
   ;; Card dimensions
