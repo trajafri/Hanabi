@@ -1,5 +1,5 @@
 (module structs racket
-  (provide Card State return bind get put
+  (provide Card Player State return bind get put
            (rename-out
             (State-tfunc state-tfunc))
            (rename-out

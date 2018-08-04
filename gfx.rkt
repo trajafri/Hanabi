@@ -15,14 +15,7 @@
 
   ;; Card color
   (define C-COLOR "mediumblue")
-
-  ;; Color is one of:
-  ;; - "yellow"
-  ;; - "red"
-  ;; - "green"
-  ;; - "dodgerblue"
-  ;; - "white"
-  ;; - "lightblue"
+  (define C-BACK-COLOR "darkgray")
   ;; - "tomato"
 
   ;; Card number properties
@@ -71,6 +64,16 @@
     (send dc draw-bitmap num r-x t-y)
     (send dc draw-bitmap num r-x b-y)
     target)
+
+  ; card-back: bitmap%
+  (define card-back
+    ((λ ()
+       (define target (make-bitmap (exact-round C-W) C-H))
+       (define dc (new bitmap-dc% [bitmap target]))
+       (send dc set-pen C-B-COLOR C-B-W 'solid)
+       (send dc set-brush C-BACK-COLOR 'solid)
+       (send dc draw-rounded-rectangle 0 0 C-W C-H C-R)
+       target)))
   
   (define fanning-angle -9)
   
@@ -124,25 +127,32 @@
   ;; Table color
   (define T-COLOR "brown")
 
-  ;; add-cards: dc% [ListOf Plyaer]
+  ;; add-decks: dc% [ListOf Player]
   ;; Adds all the cards held by the players in the given list
-  (define (add-cards dc lop)
+  (define (add-decks dc lop)
     ;; Assuming frame dimension is FRAME-W and FRAME-H
-    (define top (/ FRAME-H 2))
     (define players (length lop))
     (define box-w (/ FRAME-W players))
     (define (draw-cards lop pos)
       (match lop
-        [`(,a) (render-image (deck (player-cards a) fan-combine) dc pos 0)]
-        [(cons a b) (render-image (deck (player-cards a) fan-combine) dc pos 0)
-                    (draw-cards b lop (+ pos box-w))]))
+        [`(,a) (render-image (rotate 20 (deck (player-cards a) fan-combine)) dc pos 0)]
+        [(cons a b) (render-image (rotate 20 (deck (player-cards a) fan-combine)) dc pos 0)
+                    (draw-cards b (+ pos box-w))]))
     (draw-cards lop 0))
+
+  ;; add-player-deck: dc% Player
+  (define (add-player-deck dc p)
+    ;; Assuming frame dimension is FRAME-W and FRAME-H
+    (define top (/ FRAME-H 2))
+    (render-image (apply beside (build-list (length (player-cards p)) (λ (_) card-back))) dc (/ FRAME-W 2) (/ FRAME-H 2)))
   
   ;; draw-table: frame% Player [ListOf Player] [ListOf Coin] [ListOf Coin]
   ;; Adds a canvas with the whole table to the given frame%
   (define (draw-table f p other-players hints bombs)
-    (new canvas% [parent f]
+    (new canvas%
+         [parent f]
          [paint-callback
           (λ (canvas dc)
-            (send dc set-background T-COLOR)
-            )])))
+            (send canvas set-canvas-background (make-object color% T-COLOR))
+            (add-decks dc other-players)
+            (add-player-deck dc p))])))
