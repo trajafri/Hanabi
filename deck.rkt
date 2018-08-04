@@ -34,33 +34,6 @@
 
   (check-equal? (* (length card-colors) (foldl + 0 card-count)) (length (deck-generator)))
 
-
-  ;; StateM is a (State (S -> (V . S)))
-  (struct State [tfunc])
-
-  ;; return: V -> StateM
-  (define (return v)
-    (State (λ (s) `(,v . ,s))))
-
-  ;; bind: StateM (V -> StateM) -> StateM 
-  (define (bind ma f)
-    (match ma
-      [(State tfunc) (State
-                      (λ (new-s)
-                        (match-let*
-                            [(`(,nv . ,ns) (tfunc new-s))
-                             ((State func) (f nv))]
-                          (func ns))))]))
-
-  ;; get: StateM -> StateM
-  (define get
-    (State (λ (s) `(,s . ,s))))
-
-  ;; put: S -> StateM
-  ;; Note: Since heresy's do notation does not implement >>, we need to bind put to some dummy value.
-  (define (put st)
-    (State (λ (x) `(() . ,st))))
-
   ;; deck-shuffler: [ListOf Card] -> [ListOf Card]
   ;; Shuffles the given deck of cards
   (define (deck-shuffler deck)
@@ -78,7 +51,7 @@
                                                               `(,nc ,nd)))
                                        (_ <- (put (cadr new-card&new-deck)))
                                        (helper (return (cons (car new-card&new-deck) curr-deck)) (sub1 int)))))
-    (car ((State-tfunc (helper (return '()) (length deck))) deck)))
+    (car ((state-tfunc (helper (return '()) (length deck))) deck)))
 
 
   (check-true (andmap (λ (x y) (card=? x y))
@@ -111,7 +84,7 @@
                     (curr <- st)
                     (deal <- (pick-m m (return '())))
                     (helper (sub1 n) (return (cons deal curr))))))
-    (car ((State-tfunc (helper n (return '()))) deck)))
+    (car ((state-tfunc (helper n (return '()))) deck)))
 
   (check-true (let [(deck (deck-generator))]
                 (andmap (λ (x y) (andmap (λ (x y) (card=? x y)) x y))

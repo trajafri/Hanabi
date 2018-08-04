@@ -1,6 +1,7 @@
 (module gfx racket/gui
   (require "structs.rkt" racket/draw
-           (only-in 2htdp/image beside overlay/xy empty-image rotate))
+           (only-in mrlib/image-core render-image)
+           (except-in 2htdp/image make-pen make-color))
   (provide card fan-combine deck coin)
   
   ;; Card dimensions
@@ -50,7 +51,7 @@
     (send dc draw-text num (/ N-B-W 2) (/ N-B-W 2))
     target)
 
-  ;; card: Int Color -> Image
+  ;; card: Int Color -> bitmap%
   ;; Creates an image of a card
   (define (card n c)
     (define num (number n c))
@@ -69,27 +70,27 @@
     (send dc draw-bitmap num l-x b-y)
     (send dc draw-bitmap num r-x t-y)
     (send dc draw-bitmap num r-x b-y)
-    (show-image target))
+    target)
   
   (define fanning-angle -9)
   
   ;; fan-combine: Image Image -> Image
   ;; Combines two images by the set fanning angle
   (define (fan-combine img1 img2)
-     (overlay/xy img1 20 -5 (rotate fanning-angle img2)))
+    (overlay/xy img1 20 -5 (rotate fanning-angle img2)))
 
-  ;; deck: [ListOf Card] (bitmap-% Image -> Image) -> Image
+  ;; deck: [ListOf Card] (Image Image -> Image) -> Image
   ;; Returns an image of a deck
   (define (deck loc comb-f)
-    (if (empty? loc) empty-image (comb-f (card (card-value (car loc))
-                                               (card-color (car loc)))
+    (if (empty? loc) empty-image (comb-f (show-image (card (card-value (car loc))
+                                                           (card-color (car loc))))
                                          (deck (cdr loc) comb-f))))
 
   #;(overlay (deck `(,(Card "red" 1)
-                                ,(Card "red" 2)
-                                ,(Card "red" 3)
-                                ,(Card "red" 4)
-                                ,(Card "red" 5)) (λ (x y) (beside x y))) (empty-scene 600 190 "black"))
+                     ,(Card "red" 2)
+                     ,(Card "red" 3)
+                     ,(Card "red" 4)
+                     ,(Card "red" 5)) (λ (x y) (beside x y))) (empty-scene 600 190 "black"))
 
   #;(overlay (rotate 20 (deck `(,(Card "red" 1)
                                 ,(Card "red" 2)
@@ -106,7 +107,7 @@
   (define BOMB-C "red")
   (define BOMB-C-BG "tomato")
 
-  ;; coin: Color Color -> Image
+  ;; coin: Color Color -> bitmap%
   (define (coin fg bg)
     (define target (make-bitmap (* 2 CO-R) (* 2 CO-R)))
     (define dc (new bitmap-dc% [bitmap target]))
@@ -114,4 +115,34 @@
     (send dc set-pen bg CO-BORDER 'solid)
     ;; for some reason, the circle does not fit when drawing starts from 0 0
     (send dc draw-ellipse 2 2 (- (* 2 CO-R) CO-BORDER) (- (* 2 CO-R) CO-BORDER))
-    target))
+    target)
+
+  ;; Frame dimensions
+  (define FRAME-W 700)  ;; Eventually, this shouldn't be fixed values.
+  (define FRAME-H 400)
+
+  ;; Table color
+  (define T-COLOR "brown")
+
+  ;; add-cards: dc% [ListOf Plyaer]
+  ;; Adds all the cards held by the players in the given list
+  (define (add-cards dc lop)
+    ;; Assuming frame dimension is FRAME-W and FRAME-H
+    (define top (/ FRAME-H 2))
+    (define players (length lop))
+    (define box-w (/ FRAME-W players))
+    (define (draw-cards lop pos)
+      (match lop
+        [`(,a) (render-image (deck (player-cards a) fan-combine) dc pos 0)]
+        [(cons a b) (render-image (deck (player-cards a) fan-combine) dc pos 0)
+                    (draw-cards b lop (+ pos box-w))]))
+    (draw-cards lop 0))
+  
+  ;; draw-table: frame% Player [ListOf Player] [ListOf Coin] [ListOf Coin]
+  ;; Adds a canvas with the whole table to the given frame%
+  (define (draw-table f p other-players hints bombs)
+    (new canvas% [parent f]
+         [paint-callback
+          (λ (canvas dc)
+            (send dc set-background T-COLOR)
+            )])))
