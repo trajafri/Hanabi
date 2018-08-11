@@ -5,7 +5,7 @@
   (provide card fan-combine deck coin)
   
   ;; Card dimensions
-  (define C-H 180)
+  (define C-H 165)
   (define C-W (* C-H 0.63))
   (define C-R 10) ;;Radius for roundness
 
@@ -120,31 +120,45 @@
     (send dc draw-ellipse 2 2 (- (* 2 CO-R) CO-BORDER) (- (* 2 CO-R) CO-BORDER))
     target)
 
-  ;; Frame dimensions
-  (define FRAME-W 700)  ;; Eventually, this shouldn't be fixed values.
-  (define FRAME-H 400)
-
   ;; Table color
   (define T-COLOR "brown")
 
-  ;; add-decks: dc% [ListOf Player]
+  ;; add-decks: dc% Number Number [ListOf Player]
   ;; Adds all the cards held by the players in the given list
-  (define (add-decks dc lop)
+  (define (add-decks dc FRAME-W FRAME-H lop)
     ;; Assuming frame dimension is FRAME-W and FRAME-H
     (define players (length lop))
-    (define box-w (/ FRAME-W players))
-    (define (draw-cards lop pos)
+    (define (draw-cards lop box-w pos)
       (match lop
-        [`(,a) (render-image (rotate 20 (deck (player-cards a) fan-combine)) dc pos 0)]
-        [(cons a b) (render-image (rotate 20 (deck (player-cards a) fan-combine)) dc pos 0)
-                    (draw-cards b (+ pos box-w))]))
-    (draw-cards lop 0))
+        [`(,a)
+         (define dck (above (deck (player-cards a) beside) (square 25 "solid" "transparent") (text (player-name a) 20 "white")))
+         (define width (image-width dck))
+         (render-image dck dc (- pos (/ width 2)) 10)]
+        [(cons a b)
+         (define dck (above (deck (player-cards a) beside) (square 25 "solid" "transparent") (text (player-name a) 20 "white")))
+         (define width (image-width dck))
+         (render-image dck dc (- pos (/ width 2)) 10)
+         (draw-cards b box-w (+ pos box-w))]))
+    (if (> (length lop) 2)
+        (let* [(deck1 (first lop))
+              (deckn (foldl (λ (f acc) f) '() lop))
+              (mid-deck (cdr (reverse (cdr lop))))
+              (players (length mid-deck))]
+          (render-image (above (rotate 90 (deck (player-cards deck1) beside)) (square 25 "solid" "transparent") (text (player-name deck1) 20 "white"))
+                        dc 10 (+ 15 C-H))
+          (draw-cards mid-deck (/ FRAME-W players) (/ (/ FRAME-W players) 2))
+          (render-image (above (rotate 90 (deck (player-cards deckn) beside)) (square 25 "solid" "transparent") (text (player-name deckn) 20 "white"))
+                        dc (- FRAME-W 10 C-H) (+ 15 C-H)))
+        (draw-cards lop (/ FRAME-W players) (/ (/ FRAME-W players) 2))))
 
-  ;; add-player-deck: dc% Player
-  (define (add-player-deck dc p)
+  ;; add-player-deck: dc% Number Number Player
+  (define (add-player-deck dc FRAME-W FRAME-H p)
     ;; Assuming frame dimension is FRAME-W and FRAME-H
-    (define top (/ FRAME-H 2))
-    (render-image (apply beside (build-list (length (player-cards p)) (λ (_) card-back))) dc (/ FRAME-W 2) (/ FRAME-H 2)))
+    (define deck (apply beside (build-list (length (player-cards p)) (λ (_) card-back))))
+    (define width (image-width deck))
+    (define height (image-height deck))
+    (define top (- FRAME-H height 10))
+    (render-image deck dc (- (/ FRAME-W 2) (/ width 2)) top))
   
   ;; draw-table: frame% Player [ListOf Player] [ListOf Coin] [ListOf Coin]
   ;; Adds a canvas with the whole table to the given frame%
@@ -154,5 +168,5 @@
          [paint-callback
           (λ (canvas dc)
             (send canvas set-canvas-background (make-object color% T-COLOR))
-            (add-decks dc other-players)
-            (add-player-deck dc p))])))
+            (add-decks dc (send f get-width) (send f get-height) other-players)
+            (add-player-deck dc (send f get-width) (send f get-height) p))])))
